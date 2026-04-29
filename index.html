@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Planning CC-2A</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <h1>Planning CC-2A</h1>
+      <p>CC-2A Plomberie Chauffage · Ajaccio · 06 03 82 81 67</p>
+    </header>
+
+    <main class="container">
+      <section class="controls card">
+        <div class="row">
+          <button id="dayViewBtn" class="active">Vue Jour</button>
+          <button id="weekViewBtn">Vue Semaine</button>
+          <button id="newInterventionBtn">Ajouter intervention</button>
+        </div>
+        <div class="row wrap">
+          <input id="dateFilter" type="date" />
+          <input id="searchInput" type="text" placeholder="Rechercher client, téléphone, adresse, type..." />
+          <select id="statusFilter"></select>
+          <button id="exportCsvBtn">Exporter CSV</button>
+          <button id="printBtn">Exporter PDF / Imprimer</button>
+        </div>
+      </section>
+
+      <section id="planning" class="card"></section>
+    </main>
+
+    <dialog id="formDialog">
+      <form id="interventionForm" method="dialog">
+        <h2 id="formTitle">Nouvelle intervention</h2>
+        <div class="form-grid" id="formFields"></div>
+        <menu>
+          <button type="button" id="cancelBtn">Annuler</button>
+          <button type="submit" id="saveBtn">Enregistrer</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <template id="interventionCardTpl">
+      <article class="intervention">
+        <div class="header">
+          <h3></h3><span class="badge"></span>
+        </div>
+        <p class="meta"></p>
+        <p class="desc"></p>
+        <p class="contact"></p>
+        <div class="actions"></div>
+      </article>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
