@@ -21,13 +21,19 @@
         </div>
         <div class="row wrap">
           <input id="dateFilter" type="date" />
+          <button id="todayBtn">Aujourd’hui</button>
+          <button id="prevWeekBtn">Semaine précédente</button>
+          <button id="currentWeekBtn">Cette semaine</button>
+          <button id="nextWeekBtn">Semaine suivante</button>
           <input id="searchInput" type="text" placeholder="Rechercher client, téléphone, adresse, type..." />
           <select id="statusFilter"></select>
+          <select id="categoryFilter"></select>
           <button id="exportCsvBtn">Exporter CSV</button>
           <button id="printBtn">Exporter PDF / Imprimer</button>
         </div>
       </section>
 
+      <section class="card"><h2 id="viewTitle"></h2></section>
       <section id="planning" class="card"></section>
     </main>
 

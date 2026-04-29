@@ -18,10 +18,17 @@ button { background: var(--navy); color: var(--white); border: none; cursor: poi
 button.active { background: var(--gold); color: #111827; font-weight: 700; }
 input, select { background: var(--white); }
 #planning .day-title { border-left: 4px solid var(--gold); padding-left: .5rem; margin: .75rem 0; }
+.week-grid { display: grid; grid-template-columns: repeat(7, minmax(150px, 1fr)); gap: .65rem; }
+.week-day { border: 1px solid #dbe3f0; border-radius: 10px; padding: .55rem; background: #f8fafc; min-height: 180px; }
+.week-day h3 { margin: 0 0 .5rem 0; font-size: .95rem; color: var(--navy); }
+.week-empty { color: #64748b; font-style: italic; font-size: .9rem; }
 .intervention { border: 1px solid #e2e8f0; border-radius: 10px; padding: .75rem; margin-bottom: .75rem; }
 .intervention.urgent { border-left: 6px solid var(--danger); background: #fff3f3; }
 .intervention .header { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
 .badge { background: #e2e8f0; border-radius: 999px; padding: .2rem .6rem; font-size: .85rem; }
+.badges { display: flex; flex-wrap: wrap; gap: .3rem; }
+.category-badge { background: #dbeafe; color: #1e3a8a; border-radius: 999px; padding: .2rem .6rem; font-size: .78rem; font-weight: 700; }
+.category-erilia { background: var(--gold); color: #111827; }
 .actions { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .5rem; }
 .actions button, .actions a { text-decoration: none; font-size: .9rem; padding: .45rem .6rem; border-radius: 8px; border: none; background: #e2e8f0; color: #0f172a; }
 .actions .primary { background: var(--gold); }
@@ -32,6 +39,7 @@ menu { display: flex; justify-content: flex-end; gap: .5rem; padding: 0; }
 @media (max-width: 700px) {
   .row { flex-direction: column; }
   button { width: 100%; }
+  .week-grid { grid-template-columns: 1fr; }
 }
 @media print {
   .controls, dialog, .actions button:not(.print-keep) { display: none !important; }
