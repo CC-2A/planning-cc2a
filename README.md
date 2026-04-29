@@ -13,7 +13,8 @@ Aucune commande n'est nécessaire.
 
 - **Ajouter une intervention** : bouton `Ajouter intervention`.
 - **Modifier / Supprimer** : boutons sur chaque carte intervention.
-- **Vue jour / Vue semaine** : boutons `Vue Jour` et `Vue Semaine`.
+- **Vue jour / Vue semaine / Vue mois** : boutons `Vue Jour`, `Vue Semaine` et `Vue Mois`.
+- **Filtres** : par statut et par catégorie client.
 - **Recherche** : champ texte (client, adresse, type, description).
 - **Filtrer par statut** : menu déroulant.
 - **Actions rapides** : `Créer devis`, `Créer facture`, `Créer rapport de fuite`, `Terminé`, `À facturer`, `Facturé`, `Payé`.

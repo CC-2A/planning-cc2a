@@ -43,6 +43,17 @@ function getLocalDateString(date = new Date()) {
 function fmtDate(d){ return new Date(d+'T00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'}); }
 function weekStart(dateStr){ const dt=new Date(dateStr+'T00:00'); const day=(dt.getDay()+6)%7; dt.setDate(dt.getDate()-day); return dt; }
 function fmtDayShort(date){ return date.toLocaleDateString('fr-FR',{weekday:'long',day:'2-digit',month:'2-digit'}); }
+function monthStartGrid(dateStr){
+  const dt = new Date(dateStr+'T00:00');
+  dt.setDate(1);
+  const day = (dt.getDay()+6)%7;
+  dt.setDate(dt.getDate()-day);
+  return dt;
+}
+function monthTitle(dateStr){
+  const dt = new Date(dateStr+'T00:00');
+  return `Mois de ${dt.toLocaleDateString('fr-FR',{month:'long',year:'numeric'})}`;
+}
 
 function migrateInterventions(items){
   let changed = false;
@@ -79,7 +90,8 @@ function render(){
   const targetDate = dateFilter.value;
   planning.innerHTML = '';
   if(mode==='day') return renderDay(list,targetDate);
-  return renderWeek(list,targetDate);
+  if(mode==='week') return renderWeek(list,targetDate);
+  return renderMonth(list,targetDate);
 }
 
 function renderDay(list,targetDate){
@@ -108,6 +120,41 @@ function renderWeek(list,targetDate){
   });
 
   planning.append(week);
+}
+
+function renderMonth(list,targetDate){
+  viewTitle.textContent = monthTitle(targetDate);
+  const today = getLocalDateString();
+  const month = new Date(targetDate+'T00:00').getMonth();
+  const start = monthStartGrid(targetDate);
+  const days = Array.from({length:42}, (_,idx)=>{ const d = new Date(start); d.setDate(start.getDate()+idx); return d; });
+  const monthGrid = document.createElement('div');
+  monthGrid.className = 'month-grid';
+  ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].forEach(name=>{
+    const h = document.createElement('div');
+    h.className = 'month-head';
+    h.textContent = name;
+    monthGrid.append(h);
+  });
+  days.forEach(d=>{
+    const key = getLocalDateString(d);
+    const cell = document.createElement('section');
+    const isCurrentMonth = d.getMonth()===month;
+    cell.className = `month-day ${isCurrentMonth?'':'month-day-muted'} ${key===today?'month-day-today':''}`.trim();
+    cell.innerHTML = `<h3>${d.getDate()}</h3>`;
+    const items = list.filter(i=>i.date===key).sort((a,b)=>a.start.localeCompare(b.start));
+    if(!items.length){
+      cell.insertAdjacentHTML('beforeend', '<p class="week-empty">—</p>');
+    } else {
+      items.forEach(i=>{
+        const category = i.category || 'Client perso';
+        const catClass = category==='ERILIA' ? 'category-badge category-erilia' : 'category-badge';
+        cell.insertAdjacentHTML('beforeend', `<article class="month-item ${i.urgent?'urgent':''}"><div><strong>${i.start}</strong> · ${i.client}</div><div><span class="${catClass}">${category}</span></div><div>${i.type}</div></article>`);
+      });
+    }
+    monthGrid.append(cell);
+  });
+  planning.append(monthGrid);
 }
 
 function card(i, showActions = true){
@@ -176,12 +223,22 @@ form.onsubmit = (e)=>{
 
 document.getElementById('cancelBtn').onclick = ()=>formDialog.close();
 document.getElementById('newInterventionBtn').onclick = ()=>openForm();
-document.getElementById('dayViewBtn').onclick = ()=>{mode='day'; dayViewBtn.classList.add('active'); weekViewBtn.classList.remove('active'); render();};
-document.getElementById('weekViewBtn').onclick = ()=>{mode='week'; weekViewBtn.classList.add('active'); dayViewBtn.classList.remove('active'); render();};
-document.getElementById('todayBtn').onclick = ()=>{ dateFilter.value = getLocalDateString(); mode='day'; dayViewBtn.classList.add('active'); weekViewBtn.classList.remove('active'); render(); };
-document.getElementById('prevWeekBtn').onclick = ()=>{ const d = weekStart(dateFilter.value); d.setDate(d.getDate()-7); dateFilter.value = getLocalDateString(d); mode='week'; weekViewBtn.classList.add('active'); dayViewBtn.classList.remove('active'); render(); };
-document.getElementById('currentWeekBtn').onclick = ()=>{ dateFilter.value = getLocalDateString(); mode='week'; weekViewBtn.classList.add('active'); dayViewBtn.classList.remove('active'); render(); };
-document.getElementById('nextWeekBtn').onclick = ()=>{ const d = weekStart(dateFilter.value); d.setDate(d.getDate()+7); dateFilter.value = getLocalDateString(d); mode='week'; weekViewBtn.classList.add('active'); dayViewBtn.classList.remove('active'); render(); };
+function setMode(nextMode){
+  mode = nextMode;
+  dayViewBtn.classList.toggle('active', mode==='day');
+  weekViewBtn.classList.toggle('active', mode==='week');
+  monthViewBtn.classList.toggle('active', mode==='month');
+}
+document.getElementById('dayViewBtn').onclick = ()=>{ setMode('day'); render(); };
+document.getElementById('weekViewBtn').onclick = ()=>{ setMode('week'); render(); };
+document.getElementById('monthViewBtn').onclick = ()=>{ setMode('month'); render(); };
+document.getElementById('todayBtn').onclick = ()=>{ dateFilter.value = getLocalDateString(); setMode('day'); render(); };
+document.getElementById('prevWeekBtn').onclick = ()=>{ const d = weekStart(dateFilter.value); d.setDate(d.getDate()-7); dateFilter.value = getLocalDateString(d); setMode('week'); render(); };
+document.getElementById('currentWeekBtn').onclick = ()=>{ dateFilter.value = getLocalDateString(); setMode('week'); render(); };
+document.getElementById('nextWeekBtn').onclick = ()=>{ const d = weekStart(dateFilter.value); d.setDate(d.getDate()+7); dateFilter.value = getLocalDateString(d); setMode('week'); render(); };
+document.getElementById('prevMonthBtn').onclick = ()=>{ const d = new Date(dateFilter.value+'T00:00'); d.setMonth(d.getMonth()-1); dateFilter.value = getLocalDateString(d); setMode('month'); render(); };
+document.getElementById('currentMonthBtn').onclick = ()=>{ dateFilter.value = getLocalDateString(); setMode('month'); render(); };
+document.getElementById('nextMonthBtn').onclick = ()=>{ const d = new Date(dateFilter.value+'T00:00'); d.setMonth(d.getMonth()+1); dateFilter.value = getLocalDateString(d); setMode('month'); render(); };
 [dateFilter,searchInput,statusFilter,categoryFilter].forEach(el=>el.oninput=render);
 document.getElementById('printBtn').onclick = ()=>window.print();
 document.getElementById('exportCsvBtn').onclick = ()=>{

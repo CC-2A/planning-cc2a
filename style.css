@@ -22,6 +22,14 @@ input, select { background: var(--white); }
 .week-day { border: 1px solid #dbe3f0; border-radius: 10px; padding: .55rem; background: #f8fafc; min-height: 180px; }
 .week-day h3 { margin: 0 0 .5rem 0; font-size: .95rem; color: var(--navy); }
 .week-empty { color: #64748b; font-style: italic; font-size: .9rem; }
+.month-grid { display: grid; grid-template-columns: repeat(7, minmax(100px, 1fr)); gap: .45rem; }
+.month-head { font-weight: 700; color: var(--navy); text-align: center; font-size: .85rem; }
+.month-day { border: 1px solid #dbe3f0; border-radius: 10px; padding: .4rem; min-height: 120px; background: #fff; }
+.month-day h3 { margin: 0 0 .3rem 0; font-size: .9rem; color: var(--navy); }
+.month-day-muted { opacity: .45; }
+.month-day-today { border: 2px solid var(--gold); background: #fffdf5; }
+.month-item { border-radius: 8px; border: 1px solid #e2e8f0; padding: .3rem; margin-bottom: .25rem; font-size: .75rem; background: #f8fafc; }
+.month-item.urgent { border-left: 4px solid var(--danger); background: #fff3f3; }
 .intervention { border: 1px solid #e2e8f0; border-radius: 10px; padding: .75rem; margin-bottom: .75rem; }
 .intervention.urgent { border-left: 6px solid var(--danger); background: #fff3f3; }
 .intervention .header { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
@@ -40,6 +48,9 @@ menu { display: flex; justify-content: flex-end; gap: .5rem; padding: 0; }
   .row { flex-direction: column; }
   button { width: 100%; }
   .week-grid { grid-template-columns: 1fr; }
+  .month-grid { grid-template-columns: 1fr; }
+  .month-head { display: none; }
+  .month-day { min-height: auto; }
 }
 @media print {
   .controls, dialog, .actions button:not(.print-keep) { display: none !important; }
