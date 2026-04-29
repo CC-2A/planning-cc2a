@@ -22,7 +22,7 @@ const formDialog = document.getElementById('formDialog');
 const form = document.getElementById('interventionForm');
 const fields = document.getElementById('formFields');
 
-dateFilter.value = new Date().toISOString().slice(0,10);
+dateFilter.value = getLocalDateString();
 statusFilter.innerHTML = STATUSES.map(s=>`<option>${s}</option>`).join('');
 
 const schema = [
@@ -30,6 +30,13 @@ const schema = [
 ];
 
 function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(interventions)); }
+function getLocalDateString(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function fmtDate(d){ return new Date(d+'T00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'}); }
 function weekKey(d){ const dt=new Date(d+'T00:00'); const day=(dt.getDay()+6)%7; dt.setDate(dt.getDate()-day); return dt.toISOString().slice(0,10); }
 
