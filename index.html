@@ -14,15 +14,21 @@
 
     <main class="container">
       <section class="controls card">
-        <div class="row">
-          <button id="dayViewBtn" class="active">Vue Jour</button>
-          <button id="weekViewBtn">Vue Semaine</button>
+        <div class="row wrap">
+          <button id="dayViewBtn" class="active">Vue jour</button>
+          <button id="weekViewBtn">Vue semaine</button>
+          <button id="monthViewBtn">Vue mois</button>
+          <button id="todayBtn">Aujourd'hui</button>
+          <button id="thisWeekBtn">Cette semaine</button>
+          <button id="thisMonthBtn">Ce mois-ci</button>
           <button id="newInterventionBtn">Ajouter intervention</button>
         </div>
+        <div class="row wrap nav-row" id="rangeNav"></div>
         <div class="row wrap">
           <input id="dateFilter" type="date" />
           <input id="searchInput" type="text" placeholder="Rechercher client, téléphone, adresse, type..." />
           <select id="statusFilter"></select>
+          <select id="categoryFilter"></select>
           <button id="exportCsvBtn">Exporter CSV</button>
           <button id="printBtn">Exporter PDF / Imprimer</button>
         </div>
@@ -45,7 +51,11 @@
     <template id="interventionCardTpl">
       <article class="intervention">
         <div class="header">
-          <h3></h3><span class="badge"></span>
+          <h3></h3>
+          <div class="badge-wrap">
+            <span class="badge category-badge"></span>
+            <span class="badge"></span>
+          </div>
         </div>
         <p class="meta"></p>
         <p class="desc"></p>
