@@ -38,7 +38,7 @@ const schema = [
 
 function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(interventions)); }
 function fmtDate(d){ return new Date(d+'T00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'}); }
-function weekKey(d){ const dt=new Date(d+'T00:00'); const day=(dt.getDay()+6)%7; dt.setDate(dt.getDate()-day); return getLocalDateString(dt); }
+function weekKey(d){ const dt=new Date(d+'T00:00'); const day=(dt.getDay()+6)%7; dt.setDate(dt.getDate()-day); return dt.toISOString().slice(0,10); }
 
 function filtered(){
   const q = searchInput.value.trim().toLowerCase();
