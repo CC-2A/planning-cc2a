@@ -50,3 +50,5 @@ menu { display: flex; justify-content: flex-end; gap: .5rem; padding: 0; }
   body { background: #fff; }
   .card { box-shadow: none; }
 }
+
+#typeQuickButtons button { background:#e2e8f0; color:#0f172a; }
