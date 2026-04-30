@@ -1,6 +1,6 @@
 const STORAGE_KEY = 'cc2a_interventions_v1';
 const STATUSES = ['Tous','À faire','Confirmé','En cours','Terminé','À facturer','Facturé','Payé','Annulé'];
-const TYPES = ['Remplacement chauffe-eau','Recherche de fuite','Débouchage','Remplacement WC','Remplacement robinetterie','Groupe de sécurité','Dépannage chauffage','Intervention syndic','Devis à faire','Facture à faire','Autre'];
+const TYPES = ['Dépannage plomberie','Dépannage chauffage','Installation plomberie','Installation chauffage','Recherche de fuite','Intervention urgente','RDV devis'];
 const CATEGORIES = ['Client perso','ERILIA','Syndic','Assurance','Agence','Autre'];
 
 const demo = [
@@ -19,6 +19,7 @@ const searchInput = document.getElementById('searchInput');
 const statusFilter = document.getElementById('statusFilter');
 const categoryFilter = document.getElementById('categoryFilter');
 const rangeNav = document.getElementById('rangeNav');
+const typeQuickButtons = document.getElementById('typeQuickButtons');
 const formDialog = document.getElementById('formDialog');
 const form = document.getElementById('interventionForm');
 const fields = document.getElementById('formFields');
@@ -60,6 +61,7 @@ function filtered(){
 
 function render(){
   updateViewButtons();
+  renderTypeQuickButtons();
   renderRangeNav();
   if(mode==='day') return renderDay();
   if(mode==='week') return renderWeek();
@@ -156,6 +158,14 @@ function handleAction(act,i,status){
   if(act==='edit') return openForm(i);
   if(act==='delete'){ interventions = interventions.filter(x=>x.id!==i.id); save(); return render(); }
   if(act==='status'){ i.status=status; save(); return render(); }
+}
+
+function renderTypeQuickButtons(){
+  if(!typeQuickButtons) return;
+  typeQuickButtons.innerHTML = TYPES.map(t=>`<button type="button" data-type="${t}">${t}</button>`).join('');
+  typeQuickButtons.querySelectorAll('button').forEach(btn=>{
+    btn.onclick = ()=>openForm({ type: btn.dataset.type });
+  });
 }
 
 function openForm(item){
