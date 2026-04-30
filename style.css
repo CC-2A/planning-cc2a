@@ -16,7 +16,11 @@ body { margin: 0; font-family: Arial, sans-serif; background: var(--bg); color: 
 button, input, select, textarea { font: inherit; padding: .65rem .8rem; border-radius: 8px; border: 1px solid #cbd5e1; }
 button { background: var(--navy); color: var(--white); border: none; cursor: pointer; font-weight: 600; }
 button.active { background: var(--gold); color: #111827; }
+#followViewBtn { font-size: 1rem; }
 #planning .day-title { border-left: 4px solid var(--gold); padding-left: .5rem; margin: .75rem 0; text-transform: capitalize; }
+.follow-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: .75rem; }
+.follow-block { border: 2px solid #e2e8f0; border-radius: 12px; padding: .7rem; background: #f8fafc; }
+.follow-block h3 { margin: 0 0 .6rem; color: var(--navy); border-bottom: 2px solid #e2e8f0; padding-bottom: .35rem; }
 .week-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: .75rem; }
 .day-column { border: 1px solid #e2e8f0; border-radius: 10px; padding: .5rem; background: #f8fafc; }
 .month-head,.month-grid { display:grid; grid-template-columns: repeat(7, 1fr); gap:.4rem; }
@@ -31,6 +35,7 @@ button.active { background: var(--gold); color: #111827; }
 .intervention .header { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
 .badge-wrap { display:flex; gap:.25rem; flex-wrap:wrap; justify-content:flex-end; }
 .badge { background: #e2e8f0; border-radius: 999px; padding: .2rem .6rem; font-size: .8rem; }
+.badge.to-bill { background: #7f1d1d; color: #fff; font-weight: 700; }
 .category-badge { background:#dbeafe; color:#1e3a8a; font-weight:700; }
 .category-badge.erilia { background: var(--gold); color:#1f2937; }
 .actions { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .5rem; }
@@ -43,6 +48,7 @@ menu { display: flex; justify-content: flex-end; gap: .5rem; padding: 0; }
 @media (max-width: 700px) {
   .row { flex-direction: column; }
   button, input, select { width: 100%; }
+  .follow-grid { grid-template-columns: 1fr; }
   .month-cell { min-height: 120px; }
 }
 @media print {
