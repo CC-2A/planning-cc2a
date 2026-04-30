@@ -65,12 +65,17 @@ function render(){
   renderRangeNav();
   if(mode==='day') return renderDay();
   if(mode==='week') return renderWeek();
+  if(mode==='follow') return renderFollow();
   return renderMonth();
+}
+
+function sortByDateTime(a,b){
+  return a.date.localeCompare(b.date) || a.start.localeCompare(b.start);
 }
 
 function renderDay(){
   const selectedDate = dateFilter.value;
-  const dayItems = filtered().filter(i=>i.date===selectedDate).sort((a,b)=>a.start.localeCompare(b.start));
+  const dayItems = filtered().filter(i=>i.date===selectedDate).sort(sortByDateTime);
   planning.innerHTML = `<h2 class="day-title">${fmtLong(selectedDate)}</h2>`;
   if(!dayItems.length){ planning.innerHTML += '<p>Aucune intervention prévue ce jour.</p>'; return; }
   dayItems.forEach(i=>planning.append(card(i)));
@@ -83,7 +88,7 @@ function renderWeek(){
   planning.innerHTML = `<h2 class="day-title">Semaine du ${fmtLong(weekDates[0])} au ${fmtLong(end)}</h2><div class="week-grid"></div>`;
   const weekGrid = planning.querySelector('.week-grid');
   weekDates.forEach(day=>{
-    const items = filtered().filter(i=>i.date===day).sort((a,b)=>a.start.localeCompare(b.start));
+    const items = filtered().filter(i=>i.date===day).sort(sortByDateTime);
     const col = document.createElement('section'); col.className='day-column';
     col.innerHTML = `<h3>${fmtShort(day)}</h3>`;
     if(!items.length) col.innerHTML += '<p class="muted">Aucune intervention</p>';
@@ -103,7 +108,7 @@ function renderMonth(){
   for(let i=0;i<42;i++){
     const current = new Date(gridStart); current.setDate(gridStart.getDate()+i);
     const ymd = toYMD(current);
-    const items = filtered().filter(x=>x.date===ymd).sort((a,b)=>a.start.localeCompare(b.start));
+    const items = filtered().filter(x=>x.date===ymd).sort(sortByDateTime);
     const cell = document.createElement('section');
     cell.className = 'month-cell';
     if(current.getMonth()!==monthStart.getMonth()) cell.classList.add('outside');
@@ -115,13 +120,43 @@ function renderMonth(){
   }
 }
 
+function renderFollow(){
+  const today = dateFilter.value || getLocalDateString();
+  const items = filtered().slice().sort(sortByDateTime);
+  planning.innerHTML = `<h2 class="day-title">Vue suivi · ${fmtLong(today)}</h2><div class="follow-grid"></div>`;
+  const followGrid = planning.querySelector('.follow-grid');
+  const normalized = x => (x || '').toLowerCase();
+  const noAmount = x => !String(x.amount ?? '').trim() || Number(x.amount) <= 0;
+  const noMaterials = x => !String(x.materials ?? '').trim();
+  const blocks = [
+    ['Interventions du jour', x => x.date === today],
+    ['Interventions urgentes', x => x.urgent || normalized(x.type).includes('urgent')],
+    ['Interventions à facturer', x => x.status === 'À facturer'],
+    ['RDV devis', x => normalized(x.type).includes('devis')],
+    ['Interventions à rappeler / à confirmer', x => ['À faire','Confirmé'].includes(x.status)],
+    ['Interventions sans montant prévu', noAmount],
+    ['Interventions sans matériel renseigné', noMaterials]
+  ];
+  blocks.forEach(([title, predicate])=>{
+    const section = document.createElement('section');
+    section.className = 'follow-block';
+    section.innerHTML = `<h3>${title}</h3>`;
+    const result = items.filter(predicate);
+    if(!result.length) section.innerHTML += '<p class="muted">Aucune intervention concernée.</p>';
+    result.forEach(i=>section.append(card(i)));
+    followGrid.append(section);
+  });
+}
+
 function card(i,compact=false){
   const tpl = document.getElementById('interventionCardTpl').content.cloneNode(true);
   const root = tpl.querySelector('.intervention');
   if(compact) root.classList.add('compact');
   if(i.urgent) root.classList.add('urgent');
   tpl.querySelector('h3').textContent = `${i.start}-${i.end} · ${i.client} · ${i.type}`;
-  tpl.querySelector('.badge').textContent = i.status;
+  const statusBadge = tpl.querySelector('.badge');
+  statusBadge.textContent = i.status;
+  if(i.status==='À facturer') statusBadge.classList.add('to-bill');
   const cat = tpl.querySelector('.category-badge');
   cat.textContent = i.category || 'Client perso';
   if((i.category||'')==='ERILIA') cat.classList.add('erilia');
@@ -139,6 +174,7 @@ function renderRangeNav(){
   if(mode==='day') rangeNav.innerHTML = `<button id="prevRangeBtn">Jour précédent</button><button id="nextRangeBtn">Jour suivant</button>`;
   if(mode==='week') rangeNav.innerHTML = `<button id="prevRangeBtn">Semaine précédente</button><button id="nextRangeBtn">Semaine suivante</button>`;
   if(mode==='month') rangeNav.innerHTML = `<button id="prevRangeBtn">Mois précédent</button><button id="nextRangeBtn">Mois suivant</button>`;
+  if(mode==='follow') rangeNav.innerHTML = `<button id="prevRangeBtn">Jour précédent</button><button id="nextRangeBtn">Jour suivant</button>`;
   document.getElementById('prevRangeBtn').onclick = ()=>shiftRange(-1);
   document.getElementById('nextRangeBtn').onclick = ()=>shiftRange(1);
 }
@@ -147,11 +183,12 @@ function shiftRange(direction){
   if(mode==='day') dateFilter.value = addDays(dateFilter.value, direction);
   if(mode==='week') dateFilter.value = addDays(dateFilter.value, 7*direction);
   if(mode==='month'){ const dt=new Date(`${dateFilter.value}T00:00`); dt.setMonth(dt.getMonth()+direction); dateFilter.value = toYMD(dt); }
+  if(mode==='follow') dateFilter.value = addDays(dateFilter.value, direction);
   render();
 }
 
 function updateViewButtons(){
-  ['day','week','month'].forEach(v=>document.getElementById(`${v}ViewBtn`).classList.toggle('active', mode===v));
+  ['day','week','month','follow'].forEach(v=>document.getElementById(`${v}ViewBtn`).classList.toggle('active', mode===v));
 }
 
 function handleAction(act,i,status){
@@ -198,6 +235,7 @@ document.getElementById('newInterventionBtn').onclick = ()=>openForm();
 document.getElementById('dayViewBtn').onclick = ()=>{mode='day'; render();};
 document.getElementById('weekViewBtn').onclick = ()=>{mode='week'; render();};
 document.getElementById('monthViewBtn').onclick = ()=>{mode='month'; render();};
+document.getElementById('followViewBtn').onclick = ()=>{mode='follow'; render();};
 document.getElementById('todayBtn').onclick = ()=>{mode='day'; dateFilter.value=getLocalDateString(); render();};
 document.getElementById('thisWeekBtn').onclick = ()=>{mode='week'; dateFilter.value=getLocalDateString(); render();};
 document.getElementById('thisMonthBtn').onclick = ()=>{mode='month'; dateFilter.value=getLocalDateString(); render();};
