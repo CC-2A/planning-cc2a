@@ -58,3 +58,8 @@ menu { display: flex; justify-content: flex-end; gap: .5rem; padding: 0; }
 }
 
 #typeQuickButtons button { background:#e2e8f0; color:#0f172a; }
+
+.pending-grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(300px,1fr)); gap:.75rem; }
+.pending-card { border:2px solid #dbe3f1; }
+.plan-btn { background: var(--gold) !important; color:#111827 !important; font-weight: 700; }
+.pending-card.urgent { border-color: var(--danger); box-shadow: 0 0 0 2px rgba(143,29,29,.15); }

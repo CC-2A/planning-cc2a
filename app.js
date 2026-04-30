@@ -2,16 +2,19 @@ const STORAGE_KEY = 'cc2a_interventions_v1';
 const STATUSES = ['Tous','À faire','Confirmé','En cours','Terminé','À facturer','Facturé','Payé','Annulé'];
 const TYPES = ['Dépannage plomberie','Dépannage chauffage','Installation plomberie','Installation chauffage','Recherche de fuite','Intervention urgente','RDV devis'];
 const CATEGORIES = ['Client perso','ERILIA','Syndic','Assurance','Agence','Autre'];
+const PRIORITIES = ['Normal','Urgent','À rappeler rapidement','En attente client'];
+const WANTED_PERIODS = ['Dès que possible','Cette semaine','Semaine prochaine','Ce mois-ci','À voir avec le client','Autre'];
 
 const demo = [
-  {id:crypto.randomUUID(),date:'2026-04-29',start:'08:30',end:'10:30',client:'M. Rossi',category:'ERILIA',phone:'0600000001',email:'rossi@mail.com',address:'Ajaccio Centre',building:'A',floor:'2',door:'5',type:'Remplacement chauffe-eau',description:'Remplacement chauffe-eau 200 L',materials:'Chauffe-eau 200L + raccords',notes:'Accès cave',amount:'890',status:'Confirmé',urgent:false},
-  {id:crypto.randomUUID(),date:'2026-04-29',start:'11:00',end:'12:00',client:'Mme Martin',category:'Syndic',phone:'0600000002',email:'martin@mail.com',address:'Les Salines, Ajaccio',building:'B',floor:'1',door:'2',type:'Recherche de fuite',description:'Fuite salle de bain',materials:'Détecteur humidité',notes:'Syndic informé',amount:'180',status:'En cours',urgent:true},
-  {id:crypto.randomUUID(),date:'2026-04-30',start:'09:00',end:'10:30',client:'M. Leone',category:'Client perso',phone:'0600000003',email:'leone@mail.com',address:'Route des Sanguinaires',building:'-',floor:'RDC',door:'-',type:'Remplacement WC',description:'Remplacement WC complet',materials:'Pack WC',notes:'',amount:'420',status:'À faire',urgent:false}
+  {id:crypto.randomUUID(),date:'2026-04-29',start:'08:30',end:'10:30',client:'M. Rossi',category:'ERILIA',phone:'0600000001',email:'rossi@mail.com',address:'Ajaccio Centre',building:'A',floor:'2',door:'5',type:'Remplacement chauffe-eau',description:'Remplacement chauffe-eau 200 L',materials:'Chauffe-eau 200L + raccords',notes:'Accès cave',amount:'890',status:'Confirmé',urgent:false,dateConfirmed:'Oui',priority:'Normal',wantedPeriod:'Dès que possible',createdAt:'2026-04-20'},
+  {id:crypto.randomUUID(),date:'2026-04-29',start:'11:00',end:'12:00',client:'Mme Martin',category:'Syndic',phone:'0600000002',email:'martin@mail.com',address:'Les Salines, Ajaccio',building:'B',floor:'1',door:'2',type:'Recherche de fuite',description:'Fuite salle de bain',materials:'Détecteur humidité',notes:'Syndic informé',amount:'180',status:'En cours',urgent:true,dateConfirmed:'Oui',priority:'Urgent',wantedPeriod:'Cette semaine',createdAt:'2026-04-21'},
+  {id:crypto.randomUUID(),date:'2026-04-30',start:'09:00',end:'10:30',client:'M. Leone',category:'Client perso',phone:'0600000003',email:'leone@mail.com',address:'Route des Sanguinaires',building:'-',floor:'RDC',door:'-',type:'Remplacement WC',description:'Remplacement WC complet',materials:'Pack WC',notes:'',amount:'420',status:'À faire',urgent:false,dateConfirmed:'Oui',priority:'Normal',wantedPeriod:'Ce mois-ci',createdAt:'2026-04-22'}
 ];
 
 let interventions = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') || demo;
 let mode = 'day';
 let editingId = null;
+let pendingFilter = 'Tous';
 
 const planning = document.getElementById('planning');
 const dateFilter = document.getElementById('dateFilter');
@@ -30,7 +33,7 @@ statusFilter.innerHTML = STATUSES.map(s=>`<option>${s}</option>`).join('');
 categoryFilter.innerHTML = ['Tous les clients', ...CATEGORIES].map(c=>`<option>${c}</option>`).join('');
 
 const schema = [
-['date','Date','date'],['start','Heure début','time'],['end','Heure fin','time'],['client','Nom client'],['category','Catégorie client','category'],['phone','Téléphone'],['email','Email','email'],['address','Adresse chantier'],['building','Bâtiment'],['floor','Étage'],['door','Porte'],['type','Type'],['description','Description des travaux','textarea'],['materials','Matériel à prévoir','textarea'],['notes','Notes chantier','textarea'],['amount','Montant estimé (€)','number'],['status','Statut','select'],['urgent','Urgence','checkbox']
+['dateConfirmed','Date confirmée ?','dateConfirmed'],['date','Date','date'],['start','Heure début','time'],['end','Heure fin','time'],['client','Nom client'],['category','Catégorie client','category'],['phone','Téléphone'],['email','Email','email'],['address','Adresse chantier'],['building','Bâtiment'],['floor','Étage'],['door','Porte'],['type','Type'],['wantedPeriod','Période souhaitée','wantedPeriod'],['priority','Priorité','priority'],['description','Description des travaux','textarea'],['materials','Matériel à prévoir','textarea'],['notes','Notes chantier','textarea'],['amount','Montant estimé (€)','number'],['status','Statut','select'],['urgent','Urgence','checkbox']
 ];
 
 function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(interventions)); }
@@ -40,23 +43,37 @@ function fmtShort(d){ return new Date(`${d}T00:00`).toLocaleDateString('fr-FR',{
 function getWeekStart(dateStr){ const dt=new Date(`${dateStr}T00:00`); const day=(dt.getDay()+6)%7; dt.setDate(dt.getDate()-day); return dt; }
 function toYMD(dt){ return getLocalDateString(dt); }
 function addDays(dateStr, days){ const dt=new Date(`${dateStr}T00:00`); dt.setDate(dt.getDate()+days); return toYMD(dt); }
+function isConfirmed(i){ return (i.dateConfirmed || (i.date ? 'Oui' : 'Non, à planifier')) === 'Oui' && !!i.date; }
 
 function migrateData(){
   let changed = false;
   interventions = interventions.map(i=>{
-    if(!i.category){ changed = true; return {...i, category:'Client perso'}; }
-    return i;
+    const next = {...i};
+    if(!next.category){ next.category='Client perso'; changed = true; }
+    if(!next.dateConfirmed){ next.dateConfirmed = next.date ? 'Oui' : 'Non, à planifier'; changed = true; }
+    if(!next.priority){ next.priority = next.urgent ? 'Urgent' : 'Normal'; changed = true; }
+    if(!next.wantedPeriod){ next.wantedPeriod = 'À voir avec le client'; changed = true; }
+    if(!next.createdAt){ next.createdAt = getLocalDateString(); changed = true; }
+    return next;
   });
   if(changed) save();
 }
 
-function filtered(){
+function baseFiltered(){
   const q = searchInput.value.trim().toLowerCase();
   return interventions.filter(i =>
     (statusFilter.value==='Tous' || i.status===statusFilter.value) &&
     (categoryFilter.value==='Tous les clients' || i.category===categoryFilter.value) &&
-    (!q || [i.client,i.phone,i.address,i.type,i.description,i.category].join(' ').toLowerCase().includes(q))
+    (!q || [i.client,i.phone,i.address,i.type,i.description,i.category,i.notes].join(' ').toLowerCase().includes(q))
   );
+}
+
+function filteredConfirmed(){ return baseFiltered().filter(isConfirmed); }
+function filteredPending(){
+  let data = baseFiltered().filter(i=>!isConfirmed(i));
+  if(pendingFilter==='Urgent' || pendingFilter==='À rappeler rapidement' || pendingFilter==='En attente client') data = data.filter(i=>i.priority===pendingFilter);
+  if(['Cette semaine','Semaine prochaine','Ce mois-ci'].includes(pendingFilter)) data = data.filter(i=>i.wantedPeriod===pendingFilter);
+  return data;
 }
 
 function render(){
@@ -66,169 +83,89 @@ function render(){
   if(mode==='day') return renderDay();
   if(mode==='week') return renderWeek();
   if(mode==='follow') return renderFollow();
+  if(mode==='pending') return renderPending();
   return renderMonth();
 }
+function sortByDateTime(a,b){ return (a.date||'').localeCompare(b.date||'') || (a.start||'').localeCompare(b.start||''); }
 
-function sortByDateTime(a,b){
-  return a.date.localeCompare(b.date) || a.start.localeCompare(b.start);
-}
+function renderDay(){ const selectedDate = dateFilter.value; const dayItems = filteredConfirmed().filter(i=>i.date===selectedDate).sort(sortByDateTime); planning.innerHTML = `<h2 class="day-title">${fmtLong(selectedDate)}</h2>`; if(!dayItems.length){ planning.innerHTML += '<p>Aucune intervention prévue ce jour.</p>'; return; } dayItems.forEach(i=>planning.append(card(i))); }
+function renderWeek(){ const start = getWeekStart(dateFilter.value); const weekDates = [...Array(7)].map((_,idx)=>{ const d=new Date(start); d.setDate(start.getDate()+idx); return toYMD(d); }); const end = weekDates[6]; planning.innerHTML = `<h2 class="day-title">Semaine du ${fmtLong(weekDates[0])} au ${fmtLong(end)}</h2><div class="week-grid"></div>`; const weekGrid = planning.querySelector('.week-grid'); weekDates.forEach(day=>{ const items = filteredConfirmed().filter(i=>i.date===day).sort(sortByDateTime); const col = document.createElement('section'); col.className='day-column'; col.innerHTML = `<h3>${fmtShort(day)}</h3>`; if(!items.length) col.innerHTML += '<p class="muted">Aucune intervention</p>'; items.forEach(i=>col.append(card(i))); weekGrid.append(col); }); }
+function renderMonth(){ const anchor = new Date(`${dateFilter.value}T00:00`); const monthStart = new Date(anchor.getFullYear(), anchor.getMonth(), 1); const gridStart = new Date(monthStart); const day = (gridStart.getDay()+6)%7; gridStart.setDate(gridStart.getDate()-day); planning.innerHTML = `<h2 class="day-title">${monthStart.toLocaleDateString('fr-FR',{month:'long',year:'numeric'})}</h2><div class="month-head">${['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map(d=>`<span>${d}</span>`).join('')}</div><div class="month-grid"></div>`; const grid = planning.querySelector('.month-grid'); for(let i=0;i<42;i++){ const current = new Date(gridStart); current.setDate(gridStart.getDate()+i); const ymd = toYMD(current); const items = filteredConfirmed().filter(x=>x.date===ymd).sort(sortByDateTime); const cell = document.createElement('section'); cell.className = 'month-cell'; if(current.getMonth()!==monthStart.getMonth()) cell.classList.add('outside'); if(ymd===getLocalDateString()) cell.classList.add('today'); cell.innerHTML = `<h4>${current.getDate()}</h4>`; items.forEach(i=>cell.append(card(i,true))); if(!items.length) cell.innerHTML += '<p class="muted">&nbsp;</p>'; grid.append(cell);} }
+function renderFollow(){ const today = dateFilter.value || getLocalDateString(); const items = filteredConfirmed().slice().sort(sortByDateTime); planning.innerHTML = `<h2 class="day-title">Vue suivi · ${fmtLong(today)}</h2><div class="follow-grid"></div>`; const followGrid = planning.querySelector('.follow-grid'); const normalized = x => (x || '').toLowerCase(); const noAmount = x => !String(x.amount ?? '').trim() || Number(x.amount) <= 0; const noMaterials = x => !String(x.materials ?? '').trim(); const blocks = [ ['Interventions du jour', x => x.date === today], ['Interventions urgentes', x => x.urgent || normalized(x.type).includes('urgent') || x.priority==='Urgent'], ['Interventions à facturer', x => x.status === 'À facturer'], ['RDV devis', x => normalized(x.type).includes('devis')], ['Interventions à rappeler / à confirmer', x => ['À faire','Confirmé'].includes(x.status)], ['Interventions sans montant prévu', noAmount], ['Interventions sans matériel renseigné', noMaterials] ]; blocks.forEach(([title, predicate])=>{ const section = document.createElement('section'); section.className = 'follow-block'; section.innerHTML = `<h3>${title}</h3>`; const result = items.filter(predicate); if(!result.length) section.innerHTML += '<p class="muted">Aucune intervention concernée.</p>'; result.forEach(i=>section.append(card(i))); followGrid.append(section); }); }
 
-function renderDay(){
-  const selectedDate = dateFilter.value;
-  const dayItems = filtered().filter(i=>i.date===selectedDate).sort(sortByDateTime);
-  planning.innerHTML = `<h2 class="day-title">${fmtLong(selectedDate)}</h2>`;
-  if(!dayItems.length){ planning.innerHTML += '<p>Aucune intervention prévue ce jour.</p>'; return; }
-  dayItems.forEach(i=>planning.append(card(i)));
-}
-
-function renderWeek(){
-  const start = getWeekStart(dateFilter.value);
-  const weekDates = [...Array(7)].map((_,idx)=>{ const d=new Date(start); d.setDate(start.getDate()+idx); return toYMD(d); });
-  const end = weekDates[6];
-  planning.innerHTML = `<h2 class="day-title">Semaine du ${fmtLong(weekDates[0])} au ${fmtLong(end)}</h2><div class="week-grid"></div>`;
-  const weekGrid = planning.querySelector('.week-grid');
-  weekDates.forEach(day=>{
-    const items = filtered().filter(i=>i.date===day).sort(sortByDateTime);
-    const col = document.createElement('section'); col.className='day-column';
-    col.innerHTML = `<h3>${fmtShort(day)}</h3>`;
-    if(!items.length) col.innerHTML += '<p class="muted">Aucune intervention</p>';
-    items.forEach(i=>col.append(card(i)));
-    weekGrid.append(col);
-  });
-}
-
-function renderMonth(){
-  const anchor = new Date(`${dateFilter.value}T00:00`);
-  const monthStart = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
-  const gridStart = new Date(monthStart);
-  const day = (gridStart.getDay()+6)%7;
-  gridStart.setDate(gridStart.getDate()-day);
-  planning.innerHTML = `<h2 class="day-title">${monthStart.toLocaleDateString('fr-FR',{month:'long',year:'numeric'})}</h2><div class="month-head">${['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map(d=>`<span>${d}</span>`).join('')}</div><div class="month-grid"></div>`;
-  const grid = planning.querySelector('.month-grid');
-  for(let i=0;i<42;i++){
-    const current = new Date(gridStart); current.setDate(gridStart.getDate()+i);
-    const ymd = toYMD(current);
-    const items = filtered().filter(x=>x.date===ymd).sort(sortByDateTime);
-    const cell = document.createElement('section');
-    cell.className = 'month-cell';
-    if(current.getMonth()!==monthStart.getMonth()) cell.classList.add('outside');
-    if(ymd===getLocalDateString()) cell.classList.add('today');
-    cell.innerHTML = `<h4>${current.getDate()}</h4>`;
-    items.forEach(i=>cell.append(card(i,true)));
-    if(!items.length) cell.innerHTML += '<p class="muted">&nbsp;</p>';
-    grid.append(cell);
-  }
-}
-
-function renderFollow(){
-  const today = dateFilter.value || getLocalDateString();
-  const items = filtered().slice().sort(sortByDateTime);
-  planning.innerHTML = `<h2 class="day-title">Vue suivi · ${fmtLong(today)}</h2><div class="follow-grid"></div>`;
-  const followGrid = planning.querySelector('.follow-grid');
-  const normalized = x => (x || '').toLowerCase();
-  const noAmount = x => !String(x.amount ?? '').trim() || Number(x.amount) <= 0;
-  const noMaterials = x => !String(x.materials ?? '').trim();
-  const blocks = [
-    ['Interventions du jour', x => x.date === today],
-    ['Interventions urgentes', x => x.urgent || normalized(x.type).includes('urgent')],
-    ['Interventions à facturer', x => x.status === 'À facturer'],
-    ['RDV devis', x => normalized(x.type).includes('devis')],
-    ['Interventions à rappeler / à confirmer', x => ['À faire','Confirmé'].includes(x.status)],
-    ['Interventions sans montant prévu', noAmount],
-    ['Interventions sans matériel renseigné', noMaterials]
-  ];
-  blocks.forEach(([title, predicate])=>{
-    const section = document.createElement('section');
-    section.className = 'follow-block';
-    section.innerHTML = `<h3>${title}</h3>`;
-    const result = items.filter(predicate);
-    if(!result.length) section.innerHTML += '<p class="muted">Aucune intervention concernée.</p>';
-    result.forEach(i=>section.append(card(i)));
-    followGrid.append(section);
-  });
+function renderPending(){
+  const items = filteredPending().slice().sort((a,b)=>(b.priority==='Urgent')-(a.priority==='Urgent') || (b.createdAt||'').localeCompare(a.createdAt||''));
+  planning.innerHTML = `<h2 class="day-title">RDV à planifier</h2><div class="row wrap"><label>Filtre RDV <select id="pendingFilter"><option>Tous</option><option>Urgent</option><option>À rappeler rapidement</option><option>En attente client</option><option>Cette semaine</option><option>Semaine prochaine</option><option>Ce mois-ci</option></select></label></div><div class="pending-grid"></div>`;
+  planning.querySelector('#pendingFilter').value = pendingFilter;
+  planning.querySelector('#pendingFilter').onchange = (e)=>{ pendingFilter = e.target.value; renderPending(); };
+  const grid = planning.querySelector('.pending-grid');
+  if(!items.length){ grid.innerHTML = '<p>Aucune demande à planifier.</p>'; return; }
+  items.forEach(i=>grid.append(pendingCard(i)));
 }
 
 function card(i,compact=false){
   const tpl = document.getElementById('interventionCardTpl').content.cloneNode(true);
-  const root = tpl.querySelector('.intervention');
-  if(compact) root.classList.add('compact');
-  if(i.urgent) root.classList.add('urgent');
-  tpl.querySelector('h3').textContent = `${i.start}-${i.end} · ${i.client} · ${i.type}`;
-  const statusBadge = tpl.querySelector('.badge');
-  statusBadge.textContent = i.status;
-  if(i.status==='À facturer') statusBadge.classList.add('to-bill');
-  const cat = tpl.querySelector('.category-badge');
-  cat.textContent = i.category || 'Client perso';
-  if((i.category||'')==='ERILIA') cat.classList.add('erilia');
-  tpl.querySelector('.meta').textContent = `${i.address} | Bât ${i.building} | Étage ${i.floor} | Porte ${i.door} | ${i.amount} €`;
+  const root = tpl.querySelector('.intervention'); if(compact) root.classList.add('compact'); if(i.urgent || i.priority==='Urgent') root.classList.add('urgent');
+  tpl.querySelector('h3').textContent = `${i.start||'--:--'}-${i.end||'--:--'} · ${i.client} · ${i.type}`;
+  const statusBadge = tpl.querySelector('.badge'); statusBadge.textContent = i.status; if(i.status==='À facturer') statusBadge.classList.add('to-bill');
+  tpl.querySelector('.category-badge').textContent = i.category || 'Client perso';
+  tpl.querySelector('.meta').textContent = `${i.address} | Bât ${i.building||'-'} | Étage ${i.floor||'-'} | Porte ${i.door||'-'} | ${i.amount||0} €`;
   tpl.querySelector('.desc').textContent = i.description;
-  tpl.querySelector('.contact').innerHTML = `<a href="tel:${i.phone}">${i.phone}</a> · <a href="mailto:${i.email}">${i.email}</a> · <a target="_blank" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(i.address)}">Itinéraire</a>`;
-  const actions = tpl.querySelector('.actions');
-  const quick = ['Terminé','À facturer','Facturé','Payé'];
-  actions.innerHTML = `<button data-act="edit">Modifier</button><button data-act="delete">Supprimer</button>${quick.map(s=>`<button data-act="status" data-status="${s}">${s}</button>`).join('')}`;
-  actions.querySelectorAll('button').forEach(b=>b.onclick=()=>handleAction(b.dataset.act,i,b.dataset.status));
-  return tpl;
+  tpl.querySelector('.contact').innerHTML = `<a href="tel:${i.phone||''}">${i.phone||'Téléphone non renseigné'}</a> · <a href="mailto:${i.email||''}">${i.email||'Email non renseigné'}</a> · <a target="_blank" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(i.address||'')}">Itinéraire</a>`;
+  const actions = tpl.querySelector('.actions'); const quick = ['Terminé','À facturer','Facturé','Payé']; actions.innerHTML = `<button data-act="edit">Modifier</button><button data-act="delete">Supprimer</button>${quick.map(s=>`<button data-act="status" data-status="${s}">${s}</button>`).join('')}`;
+  actions.querySelectorAll('button').forEach(b=>b.onclick=()=>handleAction(b.dataset.act,i,b.dataset.status)); return tpl;
 }
 
-function renderRangeNav(){
-  if(mode==='day') rangeNav.innerHTML = `<button id="prevRangeBtn">Jour précédent</button><button id="nextRangeBtn">Jour suivant</button>`;
-  if(mode==='week') rangeNav.innerHTML = `<button id="prevRangeBtn">Semaine précédente</button><button id="nextRangeBtn">Semaine suivante</button>`;
-  if(mode==='month') rangeNav.innerHTML = `<button id="prevRangeBtn">Mois précédent</button><button id="nextRangeBtn">Mois suivant</button>`;
-  if(mode==='follow') rangeNav.innerHTML = `<button id="prevRangeBtn">Jour précédent</button><button id="nextRangeBtn">Jour suivant</button>`;
-  document.getElementById('prevRangeBtn').onclick = ()=>shiftRange(-1);
-  document.getElementById('nextRangeBtn').onclick = ()=>shiftRange(1);
+function pendingCard(i){
+  const article = document.createElement('article');
+  article.className = `intervention pending-card ${i.priority==='Urgent' ? 'urgent' : ''}`;
+  article.innerHTML = `<div class="header"><h3>${i.client}</h3><div class="badge-wrap"><span class="badge category-badge">${i.category}</span><span class="badge">${i.priority}</span></div></div>
+  <p><strong>Téléphone :</strong> <a href="tel:${i.phone||''}">${i.phone||'-'}</a></p>
+  <p><strong>Adresse :</strong> <a target="_blank" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(i.address||'')}">${i.address||'-'}</a></p>
+  <p><strong>Type :</strong> ${i.type||'-'} · <strong>Période :</strong> ${i.wantedPeriod||'-'}</p>
+  <p><strong>Travaux :</strong> ${i.description||'-'}</p>
+  <p><strong>Notes :</strong> ${i.notes||'-'}</p>
+  <p class="muted">Créé le ${i.createdAt||'-'}</p>
+  <div class="actions"><button class="plan-btn" data-id="${i.id}">Planifier</button><button data-act="edit">Modifier</button><button data-act="delete">Supprimer</button></div>`;
+  article.querySelector('.plan-btn').onclick = ()=>openForm(i);
+  article.querySelector('[data-act="edit"]').onclick = ()=>openForm(i);
+  article.querySelector('[data-act="delete"]').onclick = ()=>handleAction('delete',i);
+  return article;
 }
 
-function shiftRange(direction){
-  if(mode==='day') dateFilter.value = addDays(dateFilter.value, direction);
-  if(mode==='week') dateFilter.value = addDays(dateFilter.value, 7*direction);
-  if(mode==='month'){ const dt=new Date(`${dateFilter.value}T00:00`); dt.setMonth(dt.getMonth()+direction); dateFilter.value = toYMD(dt); }
-  if(mode==='follow') dateFilter.value = addDays(dateFilter.value, direction);
-  render();
-}
-
-function updateViewButtons(){
-  ['day','week','month','follow'].forEach(v=>document.getElementById(`${v}ViewBtn`).classList.toggle('active', mode===v));
-}
-
-function handleAction(act,i,status){
-  if(act==='edit') return openForm(i);
-  if(act==='delete'){ interventions = interventions.filter(x=>x.id!==i.id); save(); return render(); }
-  if(act==='status'){ i.status=status; save(); return render(); }
-}
-
-function renderTypeQuickButtons(){
-  if(!typeQuickButtons) return;
-  typeQuickButtons.innerHTML = TYPES.map(t=>`<button type="button" data-type="${t}">${t}</button>`).join('');
-  typeQuickButtons.querySelectorAll('button').forEach(btn=>{
-    btn.onclick = ()=>openForm({ type: btn.dataset.type });
-  });
-}
+function renderRangeNav(){ if(mode==='day') rangeNav.innerHTML = `<button id="prevRangeBtn">Jour précédent</button><button id="nextRangeBtn">Jour suivant</button>`; if(mode==='week') rangeNav.innerHTML = `<button id="prevRangeBtn">Semaine précédente</button><button id="nextRangeBtn">Semaine suivante</button>`; if(mode==='month') rangeNav.innerHTML = `<button id="prevRangeBtn">Mois précédent</button><button id="nextRangeBtn">Mois suivant</button>`; if(mode==='follow') rangeNav.innerHTML = `<button id="prevRangeBtn">Jour précédent</button><button id="nextRangeBtn">Jour suivant</button>`; if(mode==='pending') rangeNav.innerHTML = ''; if(document.getElementById('prevRangeBtn')) document.getElementById('prevRangeBtn').onclick = ()=>shiftRange(-1); if(document.getElementById('nextRangeBtn')) document.getElementById('nextRangeBtn').onclick = ()=>shiftRange(1); }
+function shiftRange(direction){ if(mode==='day') dateFilter.value = addDays(dateFilter.value, direction); if(mode==='week') dateFilter.value = addDays(dateFilter.value, 7*direction); if(mode==='month'){ const dt=new Date(`${dateFilter.value}T00:00`); dt.setMonth(dt.getMonth()+direction); dateFilter.value = toYMD(dt); } if(mode==='follow') dateFilter.value = addDays(dateFilter.value, direction); render(); }
+function updateViewButtons(){ ['day','week','month','follow','pending'].forEach(v=>document.getElementById(`${v}ViewBtn`)?.classList.toggle('active', mode===v)); }
+function handleAction(act,i,status){ if(act==='edit') return openForm(i); if(act==='delete'){ interventions = interventions.filter(x=>x.id!==i.id); save(); return render(); } if(act==='status'){ i.status=status; save(); return render(); } }
+function renderTypeQuickButtons(){ typeQuickButtons.innerHTML = TYPES.map(t=>`<button type="button" data-type="${t}">${t}</button>`).join(''); typeQuickButtons.querySelectorAll('button').forEach(btn=>{ btn.onclick = ()=>openForm({ type: btn.dataset.type }); }); }
 
 function openForm(item){
   editingId = item?.id || null;
   document.getElementById('formTitle').textContent = editingId ? 'Modifier intervention' : 'Nouvelle intervention';
   fields.innerHTML = schema.map(([k,l,t='text'])=>{
+    if(k==='dateConfirmed') return `<label>${l}<select name="${k}"><option ${(item?.[k]||'Oui')==='Oui'?'selected':''}>Oui</option><option ${(item?.[k]||'Oui')==='Non, à planifier'?'selected':''}>Non, à planifier</option></select></label>`;
     if(k==='type') return `<label>${l}<select name="${k}">${TYPES.map(v=>`<option ${item?.[k]===v?'selected':''}>${v}</option>`).join('')}</select></label>`;
-    if(k==='status') return `<label>${l}<select name="${k}">${STATUSES.slice(1).map(v=>`<option ${item?.[k]===v?'selected':''}>${v}</option>`).join('')}</select></label>`;
+    if(k==='status') return `<label>${l}<select name="${k}">${STATUSES.slice(1).map(v=>`<option ${(item?.[k]||'À faire')===v?'selected':''}>${v}</option>`).join('')}</select></label>`;
     if(k==='category' || t==='category') return `<label>${l}<select name="${k}">${CATEGORIES.map(v=>`<option ${(item?.[k]||'Client perso')===v?'selected':''}>${v}</option>`).join('')}</select></label>`;
+    if(k==='wantedPeriod') return `<label>${l}<select name="${k}">${WANTED_PERIODS.map(v=>`<option ${(item?.[k]||'À voir avec le client')===v?'selected':''}>${v}</option>`).join('')}</select></label>`;
+    if(k==='priority') return `<label>${l}<select name="${k}">${PRIORITIES.map(v=>`<option ${(item?.[k]||'Normal')===v?'selected':''}>${v}</option>`).join('')}</select></label>`;
     if(t==='textarea') return `<label>${l}<textarea name="${k}">${item?.[k]||''}</textarea></label>`;
     if(t==='checkbox') return `<label>${l}<input name="${k}" type="checkbox" ${item?.[k]?'checked':''}></label>`;
     return `<label>${l}<input name="${k}" type="${t}" value="${item?.[k]||''}"></label>`;
   }).join('');
+  bindDateConfirmedBehavior();
   formDialog.showModal();
 }
 
-form.onsubmit = (e)=>{
-  e.preventDefault();
-  const fd = new FormData(form);
-  const obj = Object.fromEntries(fd.entries());
-  obj.category = obj.category || 'Client perso';
-  obj.urgent = fields.querySelector('input[name="urgent"]').checked;
-  obj.id = editingId || crypto.randomUUID();
-  interventions = editingId ? interventions.map(i=>i.id===editingId?obj:i) : [...interventions,obj];
-  save(); formDialog.close(); render();
-};
+function bindDateConfirmedBehavior(){
+  const confirmed = fields.querySelector('select[name="dateConfirmed"]');
+  const dateEl = fields.querySelector('input[name="date"]');
+  const startEl = fields.querySelector('input[name="start"]');
+  const toggle = ()=>{ const yes = confirmed.value==='Oui'; dateEl.required = yes; startEl.required = yes; if(!yes){ dateEl.value=''; startEl.value=''; } };
+  confirmed.onchange = toggle; toggle();
+}
+
+form.onsubmit = (e)=>{ e.preventDefault(); const fd = new FormData(form); const obj = Object.fromEntries(fd.entries()); obj.category = obj.category || 'Client perso'; obj.urgent = fields.querySelector('input[name="urgent"]').checked; obj.id = editingId || crypto.randomUUID(); obj.createdAt = editingId ? (interventions.find(x=>x.id===editingId)?.createdAt || getLocalDateString()) : getLocalDateString(); if(obj.dateConfirmed==='Non, à planifier'){ obj.date=''; obj.start=''; obj.end=''; } if(obj.dateConfirmed==='Oui' && !obj.date) return alert('Date obligatoire pour un RDV confirmé.'); interventions = editingId ? interventions.map(i=>i.id===editingId?obj:i) : [...interventions,obj]; save(); formDialog.close(); render(); };
 
 document.getElementById('cancelBtn').onclick = ()=>formDialog.close();
 document.getElementById('newInterventionBtn').onclick = ()=>openForm();
@@ -236,16 +173,12 @@ document.getElementById('dayViewBtn').onclick = ()=>{mode='day'; render();};
 document.getElementById('weekViewBtn').onclick = ()=>{mode='week'; render();};
 document.getElementById('monthViewBtn').onclick = ()=>{mode='month'; render();};
 document.getElementById('followViewBtn').onclick = ()=>{mode='follow'; render();};
+document.getElementById('pendingViewBtn').onclick = ()=>{mode='pending'; render();};
 document.getElementById('todayBtn').onclick = ()=>{mode='day'; dateFilter.value=getLocalDateString(); render();};
 document.getElementById('thisWeekBtn').onclick = ()=>{mode='week'; dateFilter.value=getLocalDateString(); render();};
 document.getElementById('thisMonthBtn').onclick = ()=>{mode='month'; dateFilter.value=getLocalDateString(); render();};
 [dateFilter,searchInput,statusFilter,categoryFilter].forEach(el=>el.oninput=render);
 document.getElementById('printBtn').onclick = ()=>window.print();
-document.getElementById('exportCsvBtn').onclick = ()=>{
-  const rows = filtered().map(i=>[i.date,i.start,i.end,i.client,i.category,i.phone,i.email,i.address,i.building,i.floor,i.door,i.type,i.description,i.materials,i.notes,i.amount,i.status,i.urgent?'Oui':'Non']);
-  const csv = [['Date','Début','Fin','Client','Catégorie client','Téléphone','Email','Adresse','Bâtiment','Étage','Porte','Type','Description','Matériel','Notes','Montant','Statut','Urgence'],...rows]
-    .map(r=>r.map(v=>`"${String(v??'').replaceAll('"','""')}"`).join(';')).join('\n');
-  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='planning-cc2a.csv'; a.click();
-};
+document.getElementById('exportCsvBtn').onclick = ()=>{ const rows = baseFiltered().map(i=>[i.date,i.start,i.end,i.dateConfirmed,i.wantedPeriod,i.priority,i.client,i.category,i.phone,i.email,i.address,i.building,i.floor,i.door,i.type,i.description,i.materials,i.notes,i.amount,i.status,i.urgent?'Oui':'Non',i.createdAt]); const csv = [['Date','Début','Fin','Date confirmée','Période souhaitée','Priorité','Client','Catégorie client','Téléphone','Email','Adresse','Bâtiment','Étage','Porte','Type','Description','Matériel','Notes','Montant','Statut','Urgence','Date de création'],...rows].map(r=>r.map(v=>`"${String(v??'').replaceAll('"','""')}"`).join(';')).join('\n'); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='planning-cc2a.csv'; a.click(); };
 
 render();
